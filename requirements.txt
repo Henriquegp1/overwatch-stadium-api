@@ -1,2 +1,1 @@
-cd D:\VSCode\Overwach\overwatch-stadium-api
 pip freeze > requirements.txt
