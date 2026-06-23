@@ -7,6 +7,9 @@ from database import models
 from routes import webhooks
 from routes import users
 from routes import partidas # <--- Importa a nova rota
+from routes import equipes  # junto dos outros imports de routes
+
+
 
 load_dotenv()
 Base.metadata.create_all(bind=engine)
@@ -29,6 +32,7 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 app.include_router(webhooks.router, prefix="/api/webhooks", tags=["Webhooks"])
 app.include_router(users.router, prefix="/api/usuarios", tags=["Usuários"])
 app.include_router(partidas.router, prefix="/api/partidas", tags=["Partidas"]) # <--- Conecta a rota no servidor
+app.include_router(equipes.router, prefix="/api/equipes", tags=["Equipes"])  # junto dos outros include_router
 
 @app.get("/")
 def status_do_servidor():
