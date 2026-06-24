@@ -3,22 +3,27 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from typing import Optional
+from passlib.context import CryptContext
+
 from database.connection import get_db
-from database.models import Equipe
+from database.models import Equipe, Usuario
 from security.auth import get_current_admin, get_current_user
 
 router = APIRouter()
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class EquipeCriar(BaseModel):
     nome: str
     nome_capitao: str
-    email_capitao: Optional[str] = None
+    email_capitao: str  # Agora obrigatório — vai criar o usuário
+    senha_temporaria: str  # Admin define uma senha inicial pro capitão
 
 
 class EquipeAtualizar(BaseModel):
     grupo: Optional[str] = None
     fase_atual: Optional[str] = None
+    faceit_team_id: Optional[str] = None  # Admin preenche quando o Hub for aprovado
 
 
 # --- LISTAGEM ---
@@ -34,7 +39,6 @@ def listar_equipes_por_grupo(
     db: Session = Depends(get_db),
     usuario=Depends(get_current_user)
 ):
-    """Retorna as equipes de um grupo ordenadas por classificação."""
     grupo = grupo.upper()
     equipes = (
         db.query(Equipe)
@@ -57,14 +61,6 @@ def melhores_segundos_colocados(
     db: Session = Depends(get_db),
     usuario=Depends(get_current_user)
 ):
-    """
-    Retorna os 3 melhores segundos colocados entre os 5 grupos.
-    Critérios de desempate em ordem (conforme PDF seção 4):
-    1. Vitórias
-    2. Saldo de mapas
-    3. Mapas pró (ofensivo)
-    4. Menor WO
-    """
     grupos = ["A", "B", "C", "D", "E"]
     segundos = []
 
@@ -81,14 +77,12 @@ def melhores_segundos_colocados(
             .all()
         )
         if len(equipes_do_grupo) >= 2:
-            segundos.append(equipes_do_grupo[1])  # índice 1 = segundo colocado
+            segundos.append(equipes_do_grupo[1])
 
-    # Ordena os segundos colocados pelos mesmos critérios para pegar os 3 melhores
     segundos_ordenados = sorted(
         segundos,
         key=lambda e: (-e.vitorias, -e.saldo_mapas, -e.mapas_pro, e.wo_count)
     )
-
     return segundos_ordenados[:3]
 
 
@@ -100,14 +94,29 @@ def cadastrar_equipe(
     db: Session = Depends(get_db),
     admin=Depends(get_current_admin)
 ):
-    existente = db.query(Equipe).filter(Equipe.nome == equipe.nome).first()
-    if existente:
+    # Verifica nome duplicado
+    if db.query(Equipe).filter(Equipe.nome == equipe.nome).first():
         raise HTTPException(status_code=400, detail="Já existe uma equipe com esse nome.")
 
+    # Verifica email duplicado
+    if db.query(Usuario).filter(Usuario.email == equipe.email_capitao).first():
+        raise HTTPException(status_code=400, detail="Já existe um usuário com esse email.")
+
+    # Cria o usuário do capitão
+    novo_usuario = Usuario(
+        email=equipe.email_capitao,
+        senha_hash=pwd_context.hash(equipe.senha_temporaria),
+        cargo="capitao"
+    )
+    db.add(novo_usuario)
+    db.flush()  # Gera o ID sem commitar ainda
+
+    # Cria a equipe já linkada ao usuário
     nova_equipe = Equipe(
         nome=equipe.nome,
         nome_capitao=equipe.nome_capitao,
-        email_capitao=equipe.email_capitao
+        email_capitao=equipe.email_capitao,
+        usuario_id=novo_usuario.id
     )
     db.add(nova_equipe)
     db.commit()
@@ -123,7 +132,6 @@ def atualizar_equipe(
     db: Session = Depends(get_db),
     admin=Depends(get_current_admin)
 ):
-    """Permite o admin mover equipe de grupo ou fase."""
     equipe = db.query(Equipe).filter(Equipe.id == equipe_id).first()
     if not equipe:
         raise HTTPException(status_code=404, detail="Equipe não encontrada.")
@@ -132,6 +140,8 @@ def atualizar_equipe(
         equipe.grupo = dados.grupo.upper()
     if dados.fase_atual is not None:
         equipe.fase_atual = dados.fase_atual
+    if dados.faceit_team_id is not None:
+        equipe.faceit_team_id = dados.faceit_team_id
 
     db.commit()
     db.refresh(equipe)

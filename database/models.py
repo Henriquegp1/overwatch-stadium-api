@@ -93,3 +93,6 @@ class Partida(Base):
     time_a = relationship("Equipe", foreign_keys=[time_a_id], back_populates="partidas_como_time_a")
     time_b = relationship("Equipe", foreign_keys=[time_b_id], back_populates="partidas_como_time_b")
     vencedor = relationship("Equipe", foreign_keys=[vencedor_id])
+    faceit_team_id = Column(String, nullable=True)  # Preenchido depois que o Hub for aprovado
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+    capitao = relationship("Usuario", foreign_keys=[usuario_id])
