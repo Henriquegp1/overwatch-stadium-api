@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database.connection import Base
@@ -97,4 +98,32 @@ class Partida(Base):
     time_a = relationship("Equipe", foreign_keys=[time_a_id], back_populates="partidas_como_time_a")
     time_b = relationship("Equipe", foreign_keys=[time_b_id], back_populates="partidas_como_time_b")
     vencedor = relationship("Equipe", foreign_keys=[vencedor_id])
+    jogadores = relationship("Jogador", back_populates="equipe")
+    pontuacao_rank = Column(Integer, default=0)  # Soma dos 5 titulares
+
+    # Tabela de pontos por rank (Bronze 5 = 1 ... Mestre 1 = 30)
+RANK_PONTOS = {
+    "Bronze 5": 1, "Bronze 4": 2, "Bronze 3": 3, "Bronze 2": 4, "Bronze 1": 5,
+    "Prata 5": 6, "Prata 4": 7, "Prata 3": 8, "Prata 2": 9, "Prata 1": 10,
+    "Ouro 5": 11, "Ouro 4": 12, "Ouro 3": 13, "Ouro 2": 14, "Ouro 1": 15,
+    "Platina 5": 16, "Platina 4": 17, "Platina 3": 18, "Platina 2": 19, "Platina 1": 20,
+    "Diamante 5": 21, "Diamante 4": 22, "Diamante 3": 23, "Diamante 2": 24, "Diamante 1": 25,
+    "Mestre 5": 26, "Mestre 4": 27, "Mestre 3": 28, "Mestre 2": 29, "Mestre 1": 30,
+}
+
+
+class Jogador(Base):
+    __tablename__ = "jogadores"
+
+    id = Column(Integer, primary_key=True, index=True)
+    equipe_id = Column(Integer, ForeignKey("equipes.id"), nullable=False)
+
+    battletag = Column(String, nullable=False)
+    discord = Column(String, nullable=True)
+    role = Column(String, nullable=False)   # 'tank', 'dps', 'support'
+    rank = Column(String, nullable=False)   # Ex: 'Ouro 3'
+    pontos_rank = Column(Integer, nullable=False)  # Calculado na inscrição
+    reserva = Column(Boolean, default=False)
+
+    equipe = relationship("Equipe", back_populates="jogadores")
     

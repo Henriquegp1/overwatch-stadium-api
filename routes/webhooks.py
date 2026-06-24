@@ -71,13 +71,14 @@ def receber_webhook_faceit(
 
     # 6. Regra dos 10.000 pontos
     if (score_f1 == 3 and score_f2 == 0) or (score_f1 == 0 and score_f2 == 3):
-        partida.status = "aguardando_validacao_stadium"
-        mensagem = "Placar 3x0 detectado. Aguardando print do capitão."
-    else:
+        # Toda partida fecha direto — sem validação de print
         partida.status = "concluida"
         partida.finalizada_em = datetime.utcnow()
         _atualizar_estatisticas(partida, db)
         mensagem = f"Partida encerrada. Placar: {score_f1}x{score_f2}."
+
+    db.commit()
+    return {"status": "sucesso", "acao": mensagem}
 
     db.commit()
     return {"status": "sucesso", "acao": mensagem}
