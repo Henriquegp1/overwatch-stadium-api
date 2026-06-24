@@ -8,6 +8,7 @@ from routes import inscricoes
 from routes import users
 from routes import partidas
 from routes import equipes
+from routes import publico
 
 load_dotenv()
 Base.metadata.create_all(bind=engine)
@@ -30,6 +31,7 @@ app.include_router(users.router, prefix="/api/usuarios", tags=["Usuários"])
 app.include_router(partidas.router, prefix="/api/partidas", tags=["Partidas"])
 app.include_router(equipes.router, prefix="/api/equipes", tags=["Equipes"])
 app.include_router(inscricoes.router, prefix="/api/inscricoes", tags=["Inscrições"])
+app.include_router(publico.router, prefix="/api/publico", tags=["Público"])
 
 @app.get("/")
 def status_do_servidor():
