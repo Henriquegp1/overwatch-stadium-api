@@ -40,12 +40,10 @@ def receber_webhook_faceit(
     x_faceit_signature: str = Header(None),
     db: Session = Depends(get_db)
 ):
-    # 1. Valida a assinatura da FACEIT
     secret = os.getenv("FACEIT_WEBHOOK_SECRET")
     if not secret or x_faceit_signature != secret:
         raise HTTPException(status_code=401, detail="Assinatura inválida.")
 
-    # 2. Ignora eventos que não sejam fim de partida
     if webhook_data.event != "match_status_finished":
         return {"status": "ignorado", "evento": webhook_data.event}
 
@@ -54,34 +52,24 @@ def receber_webhook_faceit(
     score_f2 = webhook_data.payload.teams.faction2.score
     winner = webhook_data.payload.results.winner
 
-    # 3. Busca a partida no banco
     partida = db.query(Partida).filter(Partida.faceit_match_id == match_id).first()
     if not partida:
         return {"status": "erro", "detalhe": "Partida não encontrada no banco."}
 
-    # 4. Salva o placar
     partida.score_a = score_f1
     partida.score_b = score_f2
 
-    # 5. Determina o vencedor
     if winner == "faction1":
         partida.vencedor_id = partida.time_a_id
     else:
         partida.vencedor_id = partida.time_b_id
 
-    # 6. Regra dos 10.000 pontos
-    if (score_f1 == 3 and score_f2 == 0) or (score_f1 == 0 and score_f2 == 3):
-        # Toda partida fecha direto — sem validação de print
-        partida.status = "concluida"
-        partida.finalizada_em = datetime.utcnow()
-        _atualizar_estatisticas(partida, db)
-        mensagem = f"Partida encerrada. Placar: {score_f1}x{score_f2}."
+    partida.status = "concluida"
+    partida.finalizada_em = datetime.utcnow()
+    _atualizar_estatisticas(partida, db)
 
     db.commit()
-    return {"status": "sucesso", "acao": mensagem}
-
-    db.commit()
-    return {"status": "sucesso", "acao": mensagem}
+    return {"status": "sucesso", "acao": f"Partida encerrada. Placar: {score_f1}x{score_f2}."}
 
 
 def _atualizar_estatisticas(partida: Partida, db: Session):
