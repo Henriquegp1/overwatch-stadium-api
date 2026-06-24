@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Boolean
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database.connection import Base
@@ -32,6 +33,9 @@ class Equipe(Base):
     faceit_team_id = Column(String, nullable=True)
     usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
     pontuacao_rank = Column(Integer, default=0)
+    horarios = Column(JSONB, default=list)
+    dias = Column(JSONB, default=list)
+    tem_jogador_desclassificado = Column(Boolean, default=False)
 
     capitao = relationship("Usuario", foreign_keys=[usuario_id])
     jogadores = relationship("Jogador", back_populates="equipe")
