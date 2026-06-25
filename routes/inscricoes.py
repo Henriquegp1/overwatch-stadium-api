@@ -180,3 +180,81 @@ def verificar_inscricao(
     equipe.verificado = not equipe.verificado  # toggle
     db.commit()
     return {"verificado": equipe.verificado}
+
+class JogadorEditForm(BaseModel):
+    battletag: str
+    role: str
+    rank: str
+    discord: Optional[str] = None
+
+class InscricaoEditForm(BaseModel):
+    nome_equipe: Optional[str] = None
+    battletag_capitao: Optional[str] = None
+    horarios: Optional[List[str]] = None
+    dias: Optional[List[str]] = None
+    jogadores: Optional[List[JogadorEditForm]] = None
+    reservas: Optional[List[JogadorEditForm]] = None
+
+
+@router.patch("/{equipe_id}")
+def editar_inscricao(
+    equipe_id: int,
+    dados: InscricaoEditForm,
+    db: Session = Depends(get_db),
+    admin=Depends(get_current_admin)
+):
+    equipe = db.query(Equipe).filter(Equipe.id == equipe_id).first()
+    if not equipe:
+        raise HTTPException(status_code=404, detail="Equipe não encontrada.")
+
+    if dados.nome_equipe:
+        equipe.nome = dados.nome_equipe
+    if dados.battletag_capitao:
+        equipe.nome_capitao = dados.battletag_capitao
+    if dados.horarios is not None:
+        equipe.horarios = dados.horarios
+    if dados.dias is not None:
+        equipe.dias = dados.dias
+
+    # Atualiza jogadores se enviados
+    todos = (dados.jogadores or []) + (dados.reservas or [])
+    if todos:
+        jogadores_db = db.query(Jogador).filter(Jogador.equipe_id == equipe_id).all()
+        titulares_db = [j for j in jogadores_db if not j.reserva]
+        reservas_db  = [j for j in jogadores_db if j.reserva]
+
+        for i, j in enumerate(dados.jogadores or []):
+            if j.rank not in RANKS_VALIDOS:
+                raise HTTPException(status_code=400, detail=f"Rank inválido: '{j.rank}'")
+            if i < len(titulares_db):
+                titulares_db[i].battletag  = j.battletag
+                titulares_db[i].role       = j.role.lower()
+                titulares_db[i].rank       = j.rank
+                titulares_db[i].pontos_rank = RANK_PONTOS[j.rank]
+                titulares_db[i].discord    = j.discord
+
+        for i, j in enumerate(dados.reservas or []):
+            if j.rank not in RANKS_VALIDOS:
+                raise HTTPException(status_code=400, detail=f"Rank inválido: '{j.rank}'")
+            if i < len(reservas_db):
+                reservas_db[i].battletag  = j.battletag
+                reservas_db[i].role       = j.role.lower()
+                reservas_db[i].rank       = j.rank
+                reservas_db[i].pontos_rank = RANK_PONTOS[j.rank]
+                reservas_db[i].discord    = j.discord
+
+        # Recalcula pontuação da equipe
+        equipe.pontuacao_rank = sum(
+            RANK_PONTOS[j.rank] for j in (dados.jogadores or [])
+        )
+
+        # Verifica desclassificados
+        equipe.tem_jogador_desclassificado = any(
+            RANK_PONTOS[j.rank] > RANK_PONTOS[RANK_MAXIMO]
+            for j in todos
+            if j.rank in RANK_PONTOS
+        )
+
+    db.commit()
+    db.refresh(equipe)
+    return {"mensagem": "Equipe atualizada com sucesso.", "equipe_id": equipe.id}
