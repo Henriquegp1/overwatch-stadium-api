@@ -9,6 +9,7 @@ from routes import users
 from routes import partidas
 from routes import equipes
 from routes import publico
+from routes import chaveamento  # import do novo router
 
 load_dotenv()
 Base.metadata.create_all(bind=engine)
@@ -32,6 +33,7 @@ app.include_router(partidas.router, prefix="/api/partidas", tags=["Partidas"])
 app.include_router(equipes.router, prefix="/api/equipes", tags=["Equipes"])
 app.include_router(inscricoes.router, prefix="/api/inscricoes", tags=["Inscrições"])
 app.include_router(publico.router, prefix="/api/publico", tags=["Público"])
+app.include_router(chaveamento.router, prefix="/api/chaveamento", tags=["Chaveamento"])
 
 @app.get("/")
 def status_do_servidor():
