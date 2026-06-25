@@ -36,6 +36,7 @@ class Equipe(Base):
     horarios = Column(JSONB, default=list)
     dias = Column(JSONB, default=list)
     tem_jogador_desclassificado = Column(Boolean, default=False)
+    verificado = Column(Boolean, default=False)
 
     capitao = relationship("Usuario", foreign_keys=[usuario_id])
     jogadores = relationship("Jogador", back_populates="equipe")

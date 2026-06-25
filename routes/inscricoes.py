@@ -167,3 +167,16 @@ def listar_inscricoes(
         })
 
     return resultado
+
+@router.patch("/{equipe_id}/verificar")
+def verificar_inscricao(
+    equipe_id: int,
+    db: Session = Depends(get_db),
+    admin=Depends(get_current_admin)
+):
+    equipe = db.query(Equipe).filter(Equipe.id == equipe_id).first()
+    if not equipe:
+        raise HTTPException(status_code=404, detail="Equipe não encontrada.")
+    equipe.verificado = not equipe.verificado  # toggle
+    db.commit()
+    return {"verificado": equipe.verificado}
