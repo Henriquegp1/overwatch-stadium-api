@@ -179,6 +179,15 @@ def registrar_vencedor(
     partida.vencedor_id = dados.vencedor_id
     partida.status = "concluida"
 
+    vencedor_equipe = db.query(Equipe).filter(Equipe.id == dados.vencedor_id).first()
+    perdedor_id = partida.time_b_id if dados.vencedor_id == partida.time_a_id else partida.time_a_id
+    perdedor_equipe = db.query(Equipe).filter(Equipe.id == perdedor_id).first() if perdedor_id else None
+
+    if vencedor_equipe:
+        vencedor_equipe.vitorias += 1
+    if perdedor_equipe:
+        perdedor_equipe.derrotas += 1
+
     db.commit()
     db.refresh(partida)
 
