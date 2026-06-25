@@ -218,3 +218,25 @@ def listar_rodadas(
         })
 
     return rodadas
+
+@router.delete("/reset")
+def resetar_chaveamento(
+    db: Session = Depends(get_db),
+    admin=Depends(get_current_admin)
+):
+    # Deleta todas as partidas
+    db.query(Partida).delete()
+
+    # Reseta todas as equipes
+    equipes = db.query(Equipe).all()
+    for e in equipes:
+        e.fase_atual = "inscrita"
+        e.vitorias = 0
+        e.derrotas = 0
+        e.saldo_mapas = 0
+        e.mapas_pro = 0
+        e.mapas_contra = 0
+        e.wo_count = 0
+
+    db.commit()
+    return {"mensagem": "Chaveamento resetado. Todas as equipes voltaram para 'inscrita'."}
