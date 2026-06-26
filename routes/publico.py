@@ -57,6 +57,8 @@ def listar_partidas_publico(db: Session = Depends(get_db)):
             "time_b": time_b.nome if time_b else "BYE",
             "vencedor": vencedor.nome if vencedor else None,
             "finalizada_em": p.finalizada_em,
+            "streamer": p.streamer,
+            "horario_agendado": p.horario_agendado.isoformat() if p.horario_agendado else None,
         })
     return resultado
 

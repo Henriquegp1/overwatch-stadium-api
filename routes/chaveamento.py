@@ -5,9 +5,14 @@ from sqlalchemy.orm import Session
 from database.connection import get_db
 from database.models import Equipe, Partida
 from security.auth import get_current_admin
+from datetime import datetime
+from typing import Optional
 
 router = APIRouter()
 
+class PartidaInfoForm(BaseModel):
+    streamer: Optional[str] = None  # "akiralegacy", "foythtv", "violetkill" ou None
+    horario_agendado: Optional[str] = None  # ISO string ex: "2026-06-25T20:00:00"
 
 class VencedorForm(BaseModel):
     vencedor_id: int
@@ -273,6 +278,8 @@ def listar_rodadas(
             "rodada": p.rodada,
             "score_a": p.score_a,
             "score_b": p.score_b,
+            "streamer": p.streamer,
+            "horario_agendado": p.horario_agendado.isoformat() if p.horario_agendado else None,
         })
 
     return rodadas
@@ -298,3 +305,26 @@ def resetar_chaveamento(
 
     db.commit()
     return {"mensagem": "Chaveamento resetado. Todas as equipes voltaram para 'inscrita'."}
+
+@router.patch("/partidas/{partida_id}/info")
+def atualizar_info_partida(
+    partida_id: int,
+    dados: PartidaInfoForm,
+    db: Session = Depends(get_db),
+    admin=Depends(get_current_admin)
+):
+    partida = db.query(Partida).filter(Partida.id == partida_id).first()
+    if not partida:
+        raise HTTPException(status_code=404, detail="Partida não encontrada.")
+
+    if dados.streamer is not None:
+        partida.streamer = dados.streamer if dados.streamer != "" else None
+    if dados.horario_agendado is not None:
+        partida.horario_agendado = (
+            datetime.fromisoformat(dados.horario_agendado)
+            if dados.horario_agendado != ""
+            else None
+        )
+
+    db.commit()
+    return {"mensagem": "Informações da partida atualizadas."}
