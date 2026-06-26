@@ -315,3 +315,16 @@ def reativar_equipe(
     equipe.fase_atual = "eliminatoria"
     db.commit()
     return {"mensagem": f"Equipe '{equipe.nome}' reativada."}
+
+@router.patch("/equipes/{equipe_id}/eliminar")
+def eliminar_equipe(
+    equipe_id: int,
+    db: Session = Depends(get_db),
+    admin=Depends(get_current_admin)
+):
+    equipe = db.query(Equipe).filter(Equipe.id == equipe_id).first()
+    if not equipe:
+        raise HTTPException(status_code=404, detail="Equipe não encontrada.")
+    equipe.fase_atual = "eliminado"
+    db.commit()
+    return {"mensagem": f"Equipe '{equipe.nome}' eliminada."}
