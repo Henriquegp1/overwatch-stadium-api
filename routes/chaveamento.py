@@ -80,7 +80,7 @@ def gerar_chaveamento(
 
         equipes = (
             db.query(Equipe)
-            .filter(Equipe.id.in_(ids_vencedores))
+            .filter(Equipe.fase_atual.in_(["inscrita", "eliminatoria"]))
             .order_by(Equipe.pontuacao_rank.desc())
             .all()
         )
@@ -214,6 +214,10 @@ def registrar_vencedor(
     perdedor_id = partida.time_b_id if dados.vencedor_id == partida.time_a_id else partida.time_a_id
     perdedor_equipe = db.query(Equipe).filter(Equipe.id == perdedor_id).first() if perdedor_id else None
 
+    # Se modo eliminatório, marca perdedor como eliminado
+    if partida.modo == "eliminatorio" and perdedor_equipe:
+        perdedor_equipe.fase_atual = "eliminado"
+
     if vencedor_equipe:
         vencedor_equipe.vitorias += 1
 
@@ -328,3 +332,16 @@ def atualizar_info_partida(
 
     db.commit()
     return {"mensagem": "Informações da partida atualizadas."}
+
+@router.patch("/equipes/{equipe_id}/reativar")
+def reativar_equipe(
+    equipe_id: int,
+    db: Session = Depends(get_db),
+    admin=Depends(get_current_admin)
+):
+    equipe = db.query(Equipe).filter(Equipe.id == equipe_id).first()
+    if not equipe:
+        raise HTTPException(status_code=404, detail="Equipe não encontrada.")
+    equipe.fase_atual = "eliminatoria"
+    db.commit()
+    return {"mensagem": f"Equipe '{equipe.nome}' reativada."}

@@ -67,6 +67,7 @@ class Partida(Base):
     finalizada_em = Column(DateTime, nullable=True)
     streamer = Column(String, nullable=True)
     horario_agendado = Column(DateTime, nullable=True)
+    modo = Column(String, default="eliminatorio")
 
     time_a = relationship("Equipe", foreign_keys=[time_a_id], back_populates="partidas_como_time_a")
     time_b = relationship("Equipe", foreign_keys=[time_b_id], back_populates="partidas_como_time_b")
