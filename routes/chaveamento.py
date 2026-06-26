@@ -163,8 +163,30 @@ def registrar_vencedor(
     if not partida:
         raise HTTPException(status_code=404, detail="Partida não encontrada.")
 
-    if partida.status == "concluida":
-        raise HTTPException(status_code=400, detail="Partida já foi concluída.")
+    # Se já foi concluída, reverte os stats antes de recalcular
+    if partida.status == "concluida" and partida.score_a is not None and partida.score_b is not None:
+        # Reverte vitorias/derrotas do resultado anterior
+        vencedor_anterior = db.query(Equipe).filter(Equipe.id == partida.vencedor_id).first()
+        perdedor_anterior_id = partida.time_b_id if partida.vencedor_id == partida.time_a_id else partida.time_a_id
+        perdedor_anterior = db.query(Equipe).filter(Equipe.id == perdedor_anterior_id).first() if perdedor_anterior_id else None
+
+        if vencedor_anterior:
+            vencedor_anterior.vitorias = max(0, vencedor_anterior.vitorias - 1)
+        if perdedor_anterior:
+            perdedor_anterior.derrotas = max(0, perdedor_anterior.derrotas - 1)
+
+        # Reverte saldo de mapas se não for mata-mata
+        if partida.fase != "eliminatoria":
+            time_a_eq = db.query(Equipe).filter(Equipe.id == partida.time_a_id).first()
+            time_b_eq = db.query(Equipe).filter(Equipe.id == partida.time_b_id).first() if partida.time_b_id else None
+            if time_a_eq:
+                time_a_eq.saldo_mapas = (time_a_eq.saldo_mapas or 0) - (partida.score_a - partida.score_b)
+                time_a_eq.mapas_pro = (time_a_eq.mapas_pro or 0) - partida.score_a
+                time_a_eq.mapas_contra = (time_a_eq.mapas_contra or 0) - partida.score_b
+            if time_b_eq:
+                time_b_eq.saldo_mapas = (time_b_eq.saldo_mapas or 0) - (partida.score_b - partida.score_a)
+                time_b_eq.mapas_pro = (time_b_eq.mapas_pro or 0) - partida.score_b
+                time_b_eq.mapas_contra = (time_b_eq.mapas_contra or 0) - partida.score_a
 
     ids_validos = [partida.time_a_id]
     if partida.time_b_id:
