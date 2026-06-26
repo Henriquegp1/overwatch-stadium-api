@@ -11,7 +11,8 @@ router = APIRouter()
 
 class VencedorForm(BaseModel):
     vencedor_id: int
-
+    score_a: int  # mapas do time_a
+    score_b: int  # mapas do time_b
 
 @router.post("/gerar")
 def gerar_chaveamento(
@@ -165,7 +166,6 @@ def registrar_vencedor(
     if partida.status == "concluida":
         raise HTTPException(status_code=400, detail="Partida já foi concluída.")
 
-    # Valida que o vencedor é um dos times da partida
     ids_validos = [partida.time_a_id]
     if partida.time_b_id:
         ids_validos.append(partida.time_b_id)
@@ -176,26 +176,51 @@ def registrar_vencedor(
             detail="Vencedor deve ser um dos times da partida."
         )
 
+    # Salva placar
+    partida.score_a = dados.score_a
+    partida.score_b = dados.score_b
     partida.vencedor_id = dados.vencedor_id
     partida.status = "concluida"
 
+    # Atualiza vitorias/derrotas
     vencedor_equipe = db.query(Equipe).filter(Equipe.id == dados.vencedor_id).first()
     perdedor_id = partida.time_b_id if dados.vencedor_id == partida.time_a_id else partida.time_a_id
     perdedor_equipe = db.query(Equipe).filter(Equipe.id == perdedor_id).first() if perdedor_id else None
 
     if vencedor_equipe:
         vencedor_equipe.vitorias += 1
+
     if perdedor_equipe:
         perdedor_equipe.derrotas += 1
+
+    # Saldo de mapas — só acumula em fase de grupos, não no mata-mata
+    if partida.fase != "eliminatoria":
+        saldo_a = dados.score_a - dados.score_b
+        saldo_b = dados.score_b - dados.score_a
+
+        time_a_equipe = db.query(Equipe).filter(Equipe.id == partida.time_a_id).first()
+        time_b_equipe = db.query(Equipe).filter(Equipe.id == partida.time_b_id).first() if partida.time_b_id else None
+
+        if time_a_equipe:
+            time_a_equipe.saldo_mapas = (time_a_equipe.saldo_mapas or 0) + saldo_a
+            time_a_equipe.mapas_pro = (time_a_equipe.mapas_pro or 0) + dados.score_a
+            time_a_equipe.mapas_contra = (time_a_equipe.mapas_contra or 0) + dados.score_b
+
+        if time_b_equipe:
+            time_b_equipe.saldo_mapas = (time_b_equipe.saldo_mapas or 0) + saldo_b
+            time_b_equipe.mapas_pro = (time_b_equipe.mapas_pro or 0) + dados.score_b
+            time_b_equipe.mapas_contra = (time_b_equipe.mapas_contra or 0) + dados.score_a
 
     db.commit()
     db.refresh(partida)
 
     vencedor = db.query(Equipe).filter(Equipe.id == dados.vencedor_id).first()
     return {
-        "mensagem": f"Vencedor '{vencedor.nome}' registrado.",
+        "mensagem": f"Vencedor '{vencedor.nome}' registrado. Placar: {dados.score_a}×{dados.score_b}",
         "partida_id": partida_id,
-        "vencedor_id": dados.vencedor_id
+        "vencedor_id": dados.vencedor_id,
+        "score_a": dados.score_a,
+        "score_b": dados.score_b
     }
 
 
