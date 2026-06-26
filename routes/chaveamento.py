@@ -248,7 +248,9 @@ def listar_rodadas(
             "time_b": {"id": time_b.id, "nome": time_b.nome} if time_b else {"id": None, "nome": "BYE"},
             "vencedor": {"id": vencedor.id, "nome": vencedor.nome} if vencedor else None,
             "status": p.status,
-            "rodada": p.rodada
+            "rodada": p.rodada,
+            "score_a": p.score_a,
+            "score_b": p.score_b,
         })
 
     return rodadas
