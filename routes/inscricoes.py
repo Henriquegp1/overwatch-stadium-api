@@ -151,6 +151,8 @@ def listar_inscricoes(
             "nome_capitao": equipe.nome_capitao,
             "pontuacao_rank": equipe.pontuacao_rank,
             "tem_jogador_desclassificado": equipe.tem_jogador_desclassificado,
+            "verificado": equipe.verificado,      
+            "fase_atual": equipe.fase_atual,      
             "horarios": equipe.horarios,
             "dias": equipe.dias,
             "jogadores": [
