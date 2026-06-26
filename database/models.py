@@ -65,6 +65,8 @@ class Partida(Base):
     print_url = Column(String, nullable=True)
     criada_em = Column(DateTime, default=datetime.utcnow)
     finalizada_em = Column(DateTime, nullable=True)
+    streamer = Column(String, nullable=True)
+    horario_agendado = Column(DateTime, nullable=True)
 
     time_a = relationship("Equipe", foreign_keys=[time_a_id], back_populates="partidas_como_time_a")
     time_b = relationship("Equipe", foreign_keys=[time_b_id], back_populates="partidas_como_time_b")
